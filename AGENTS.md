@@ -1,10 +1,5 @@
-<!-- LOVABLE:BEGIN -->
-> [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
-<!-- LOVABLE:END -->
+# Varo — règles techniques
+- Toute écriture sensible (stock, ventes, paiements, sessions, abonnements, rôles) passe par des fonctions SQL SECURITY DEFINER ; le client n'a que SELECT sur ces tables — l'isolation et l'intégrité sont garanties côté base.
+- Rôle et boutique d'un utilisateur vivent uniquement dans roles_utilisateurs (aucun droit d'écriture client) — empêche l'auto-promotion.
+- Les déclencheurs refusent les changements de champs protégés quand current_user est authenticated/anon — les fonctions serveur restent seules autorisées.
+- Montants en entiers Ariary — pas d'erreurs d'arrondi.
