@@ -676,10 +676,24 @@ export type Database = {
     }
     Functions: {
       abonnement_actif: { Args: { _boutique: string }; Returns: boolean }
+      changer_statut_vendeur: {
+        Args: { _actif: boolean; _vendeur: string }
+        Returns: undefined
+      }
+      creer_boutique: {
+        Args: {
+          _adresse: string
+          _nom: string
+          _nom_proprietaire: string
+          _telephone: string
+        }
+        Returns: string
+      }
       est_admin: { Args: never; Returns: boolean }
       est_proprietaire_de: { Args: { _boutique: string }; Returns: boolean }
       ma_boutique: { Args: never; Returns: string }
       mon_role: { Args: never; Returns: string }
+      noter_connexion: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
