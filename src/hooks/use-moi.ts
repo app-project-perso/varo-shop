@@ -42,7 +42,7 @@ export function useMoi() {
       return {
         userId: u.user.id,
         email: u.user.email ?? null,
-        nomMeta: (u.user.user_metadata?.nom as string) ?? null,
+        nomMeta: (u.user.user_metadata?.['nom'] as string) ?? null,
         role: (r?.role as Role) ?? null,
         actif: r?.actif ?? false,
         nom: r?.nom ?? null,
