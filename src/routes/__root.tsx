@@ -122,6 +122,8 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
+    // Aperçu de développement uniquement : permet de tester les accès interdits depuis la console
+    if (import.meta.env.DEV) (window as unknown as { supabase: typeof supabase }).supabase = supabase;
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
