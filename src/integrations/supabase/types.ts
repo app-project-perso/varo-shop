@@ -268,6 +268,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lignes_vente_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_vente"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lignes_vente_vente_id_fkey"
             columns: ["vente_id"]
             isOneToOne: false
@@ -361,6 +368,13 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_stock_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_vente"
             referencedColumns: ["id"]
           },
           {
@@ -522,6 +536,7 @@ export type Database = {
           boutique_id: string | null
           created_at: string
           derniere_connexion: string | null
+          doit_changer_mdp: boolean
           id: string
           nom: string | null
           role: string
@@ -533,6 +548,7 @@ export type Database = {
           boutique_id?: string | null
           created_at?: string
           derniere_connexion?: string | null
+          doit_changer_mdp?: boolean
           id?: string
           nom?: string | null
           role: string
@@ -544,6 +560,7 @@ export type Database = {
           boutique_id?: string | null
           created_at?: string
           derniere_connexion?: string | null
+          doit_changer_mdp?: boolean
           id?: string
           nom?: string | null
           role?: string
@@ -672,7 +689,69 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      produits_vente: {
+        Row: {
+          actif: boolean | null
+          boutique_id: string | null
+          categorie_id: string | null
+          code: string | null
+          id: string | null
+          nom: string | null
+          prix_vente: number | null
+          remise_active: boolean | null
+          remise_type: string | null
+          remise_valeur: number | null
+          seuil_alerte: number | null
+          stock_actuel: number | null
+          unite: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          boutique_id?: string | null
+          categorie_id?: string | null
+          code?: string | null
+          id?: string | null
+          nom?: string | null
+          prix_vente?: number | null
+          remise_active?: boolean | null
+          remise_type?: string | null
+          remise_valeur?: number | null
+          seuil_alerte?: number | null
+          stock_actuel?: number | null
+          unite?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          boutique_id?: string | null
+          categorie_id?: string | null
+          code?: string | null
+          id?: string | null
+          nom?: string | null
+          prix_vente?: number | null
+          remise_active?: boolean | null
+          remise_type?: string | null
+          remise_valeur?: number | null
+          seuil_alerte?: number | null
+          stock_actuel?: number | null
+          unite?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produits_boutique_id_fkey"
+            columns: ["boutique_id"]
+            isOneToOne: false
+            referencedRelation: "boutiques"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_categorie_id_fkey"
+            columns: ["categorie_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       abonnement_actif: { Args: { _boutique: string }; Returns: boolean }

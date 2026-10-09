@@ -15,6 +15,20 @@
       "when": 1791359303505,
       "tag": "0001_phase1_fonctions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791547011634,
+      "tag": "0002_durcissement",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791547051626,
+      "tag": "0003_vendeurs_mdp_limite",
+      "breakpoints": true
     }
   ]
 }
