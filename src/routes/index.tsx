@@ -1,4 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Logo } from "@/components/varo/Logo";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -15,16 +19,25 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: role } = await supabase.rpc("mon_role");
+      const cible = role === "proprietaire" ? "/tableau" : role === "vendeur" ? "/caisse" : role === "admin_editeur" ? "/admin" : "/bienvenue";
+      navigate({ to: cible });
+    });
+  }, [navigate]);
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6 text-center">
-      <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary text-4xl font-extrabold text-cta shadow-sm">
-        V✓
-      </div>
+      <Logo taille={80} />
       <h1 className="text-4xl font-extrabold text-primary">Varo</h1>
       <p className="max-w-sm text-lg text-muted-foreground">Ta caisse, ton stock, sous contrôle.</p>
-      <p className="rounded-full bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm">
-        Bientôt disponible
-      </p>
+      <div className="flex w-full max-w-xs flex-col gap-3">
+        <Button asChild variant="cta" size="xl"><Link to="/auth">Commencer — 14 jours gratuits</Link></Button>
+        <Button asChild variant="outline" size="xl"><Link to="/auth">Se connecter</Link></Button>
+      </div>
     </main>
   );
 }
