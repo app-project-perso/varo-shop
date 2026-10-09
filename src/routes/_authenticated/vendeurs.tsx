@@ -36,7 +36,10 @@ function Vendeurs({ moi }: { moi: Moi }) {
 
   const basculer = async (id: string, actif: boolean) => {
     const { error } = await supabase.rpc("changer_statut_vendeur", { _vendeur: id, _actif: actif });
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success(actif ? "Vendeur réactivé" : "Vendeur désactivé");
     qc.invalidateQueries({ queryKey: ["vendeurs"] });
   };
