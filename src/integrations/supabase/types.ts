@@ -536,6 +536,7 @@ export type Database = {
           boutique_id: string | null
           created_at: string
           derniere_connexion: string | null
+          doit_changer_mdp: boolean
           id: string
           nom: string | null
           role: string
@@ -547,6 +548,7 @@ export type Database = {
           boutique_id?: string | null
           created_at?: string
           derniere_connexion?: string | null
+          doit_changer_mdp?: boolean
           id?: string
           nom?: string | null
           role: string
@@ -558,6 +560,7 @@ export type Database = {
           boutique_id?: string | null
           created_at?: string
           derniere_connexion?: string | null
+          doit_changer_mdp?: boolean
           id?: string
           nom?: string | null
           role?: string
