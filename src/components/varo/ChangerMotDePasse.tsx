@@ -13,6 +13,7 @@ import { Logo } from "./Logo";
 export function ChangerMotDePasse() {
   const changer = useServerFn(confirmerChangementMotDePasse);
   const qc = useQueryClient();
+  const [actuel, setActuel] = useState("");
   const [mdp, setMdp] = useState("");
   const [confirm, setConfirm] = useState("");
   const [erreur, setErreur] = useState("");
@@ -25,8 +26,10 @@ export function ChangerMotDePasse() {
     if (mdp !== confirm) return setErreur("Les deux mots de passe ne sont pas identiques.");
     setEnCours(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: mdp });
+      const { error } = await supabase.auth.updateUser({ password: mdp, current_password: actuel } as { password: string });
       if (error) {
+        console.error("updateUser", error.message);
+        if (/current|reauth|invalid/i.test(error.message)) throw new Error("Le mot de passe provisoire est incorrect.");
         if (/weak|guess|pwned|leaked/i.test(error.message)) throw new Error("Mot de passe trop facile à deviner. Choisis-en un autre.");
         if (/same|different/i.test(error.message)) throw new Error("Choisis un mot de passe différent du provisoire.");
         throw new Error("Impossible de changer le mot de passe.");
@@ -48,6 +51,10 @@ export function ChangerMotDePasse() {
           <Logo taille={48} />
           <h1 className="flex items-center gap-2 text-xl font-extrabold text-primary"><KeyRound className="h-5 w-5" aria-hidden /> Choisis ton mot de passe</h1>
           <p className="text-sm text-muted-foreground">Ton mot de passe actuel est provisoire. Choisis-en un nouveau pour continuer.</p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="n0">Mot de passe provisoire</Label>
+          <Input id="n0" type="password" className="h-12" value={actuel} onChange={(e) => setActuel(e.target.value)} autoComplete="current-password" />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="n1">Nouveau mot de passe</Label>
