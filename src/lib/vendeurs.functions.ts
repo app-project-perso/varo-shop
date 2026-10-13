@@ -101,22 +101,20 @@ export const reinitialiserMotDePasseVendeur = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Changement du mot de passe provisoire par l'utilisateur lui-même (première connexion). */
-export const changerMonMotDePasse = createServerFn({ method: "POST" })
+/**
+ * Lève l'obligation de changer le mot de passe provisoire.
+ * Le navigateur change d'abord le mot de passe (sa session reste ouverte) ;
+ * le serveur vérifie ensuite que le nouveau mot de passe fonctionne vraiment
+ * et qu'il diffère du provisoire, avant de lever le drapeau.
+ */
+export const confirmerChangementMotDePasse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ motDePasse: z.string().min(8, "8 caractères minimum.").max(72) }).parse(d))
+  .inputValidator((d: unknown) => z.object({ motDePasse: z.string().min(8).max(72) }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(context.userId, { password: data.motDePasse });
-    if (error) {
-      if (/weak|guess|pwned|leaked/i.test(error.message)) throw new Error("Mot de passe trop facile à deviner. Choisis-en un autre.");
-      if (/same|different/i.test(error.message)) throw new Error("Choisis un mot de passe différent du provisoire.");
-      throw new Error("Impossible de changer le mot de passe.");
-    }
-    // Le drapeau n'est levé qu'après un vrai changement de mot de passe, côté serveur
-    await supabaseAdmin.from("roles_utilisateurs").update({ doit_changer_mdp: false }).eq("user_id", context.userId);
-    // Changer le mot de passe ferme les sessions : on rouvre une session avec le nouveau mot de passe
     const { data: u } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+    const email = u.user?.email;
+    if (!email) throw new Error("Compte introuvable.");
     const { createClient } = await import("@supabase/supabase-js");
     const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
     const pub = createClient(process.env["SUPABASE_URL"]!, key, {
@@ -128,6 +126,10 @@ export const changerMonMotDePasse = createServerFn({ method: "POST" })
         return fetch(input, { ...init, headers: h });
       } },
     });
-    const { data: s } = await pub.auth.signInWithPassword({ email: u.user!.email!, password: data.motDePasse });
-    return { access_token: s.session?.access_token ?? null, refresh_token: s.session?.refresh_token ?? null };
+    const { data: s, error } = await pub.auth.signInWithPassword({ email, password: data.motDePasse });
+    if (error || !s.session) throw new Error("Le nouveau mot de passe n'a pas été enregistré. Réessaie.");
+    // On ferme la session de vérification uniquement (pas celle du navigateur)
+    await pub.auth.signOut({ scope: "local" });
+    await supabaseAdmin.from("roles_utilisateurs").update({ doit_changer_mdp: false }).eq("user_id", context.userId);
+    return { ok: true };
   });

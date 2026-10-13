@@ -4,14 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { changerMonMotDePasse } from "@/lib/vendeurs.functions";
+import { confirmerChangementMotDePasse } from "@/lib/vendeurs.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "./Logo";
 
 export function ChangerMotDePasse() {
-  const changer = useServerFn(changerMonMotDePasse);
+  const changer = useServerFn(confirmerChangementMotDePasse);
   const qc = useQueryClient();
   const [mdp, setMdp] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -25,10 +25,13 @@ export function ChangerMotDePasse() {
     if (mdp !== confirm) return setErreur("Les deux mots de passe ne sont pas identiques.");
     setEnCours(true);
     try {
-      const r = await changer({ data: { motDePasse: mdp } });
-      if (r.access_token && r.refresh_token) {
-        await supabase.auth.setSession({ access_token: r.access_token, refresh_token: r.refresh_token });
+      const { error } = await supabase.auth.updateUser({ password: mdp });
+      if (error) {
+        if (/weak|guess|pwned|leaked/i.test(error.message)) throw new Error("Mot de passe trop facile à deviner. Choisis-en un autre.");
+        if (/same|different/i.test(error.message)) throw new Error("Choisis un mot de passe différent du provisoire.");
+        throw new Error("Impossible de changer le mot de passe.");
       }
+      await changer({ data: { motDePasse: mdp } });
       toast.success("Mot de passe changé");
       await qc.invalidateQueries({ queryKey: ["moi"] });
     } catch (err) {
