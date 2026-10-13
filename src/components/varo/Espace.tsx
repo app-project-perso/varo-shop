@@ -7,6 +7,7 @@ import { accueilPourRole, useMoi, type Role, type Moi } from "@/hooks/use-moi";
 import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
 import { AbonnementInactif } from "./AbonnementInactif";
+import { ChangerMotDePasse } from "./ChangerMotDePasse";
 
 const NAV: Record<Role, { to: string; label: string }[]> = {
   proprietaire: [
@@ -56,6 +57,7 @@ export function Espace({
       </div>
     );
   }
+  if (moi.doitChangerMdp) return <ChangerMotDePasse />;
   if (!roles.includes(moi.role)) return <Navigate to={accueilPourRole(moi.role)} />;
 
   const deconnexion = async () => {

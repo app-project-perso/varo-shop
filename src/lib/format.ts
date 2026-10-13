@@ -18,12 +18,19 @@ export function formatDateHeure(d: string | Date | null | undefined): string {
   }).format(new Date(d));
 }
 
+/** Domaine réservé (RFC 2606) : aucun courrier ne peut jamais y être livré. */
+export const DOMAINE_VENDEUR = "@vendeur.varo.invalid";
+
+export function estCompteSansEmail(email: string | null | undefined): boolean {
+  return !!email && email.toLowerCase().endsWith(DOMAINE_VENDEUR);
+}
+
 /** Un identifiant sans « @ » est un numéro de téléphone : on le convertit en adresse interne. */
 export function identifiantVersEmail(identifiant: string): string {
   const v = identifiant.trim().toLowerCase();
   if (v.includes("@")) return v;
   const chiffres = v.replace(/[^\d]/g, "");
-  return `${chiffres}@tel.varo.app`;
+  return `${chiffres}${DOMAINE_VENDEUR}`;
 }
 
 export function telephoneValide(v: string): boolean {

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/varo/Logo";
-import { identifiantVersEmail } from "@/lib/format";
+import { estCompteSansEmail, identifiantVersEmail } from "@/lib/format";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -79,7 +79,7 @@ function AuthPage() {
         navigate({ to: "/" });
       } else if (mode === "inscription") {
         if (!nom.trim()) return setErreur("Ton nom est obligatoire.");
-        if (!identifiant.includes("@")) return setErreur("Donne une adresse email valide.");
+        if (!identifiant.includes("@") || estCompteSansEmail(identifiant)) return setErreur("Donne une adresse email valide.");
         if (mdp.length < 8) return setErreur("8 caractères minimum pour le mot de passe.");
         const { data, error } = await supabase.auth.signUp({
           email: identifiant.trim(),
@@ -90,7 +90,8 @@ function AuthPage() {
         if (data.session) navigate({ to: "/bienvenue" });
         else setSucces("Compte créé. Ouvre l'email qu'on vient de t'envoyer pour confirmer ton adresse, puis connecte-toi.");
       } else {
-        if (!identifiant.includes("@")) return setErreur("Donne l'email de ton compte. Vendeur ? Demande au propriétaire.");
+        if (!identifiant.includes("@") || estCompteSansEmail(identifiant))
+          return setErreur("Donne l'email de ton compte. Vendeur connecté par téléphone ? Demande au propriétaire de changer ton mot de passe.");
         const { error } = await supabase.auth.resetPasswordForEmail(identifiant.trim(), {
           redirectTo: `${window.location.origin}/reset-password`,
         });

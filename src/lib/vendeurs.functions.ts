@@ -36,7 +36,7 @@ export const creerVendeur = createServerFn({ method: "POST" })
       if (!z.string().email().safeParse(email).success) throw new Error("Email invalide.");
     } else {
       if (chiffres.length < 9) throw new Error("Donne un téléphone ou un email.");
-      email = `${chiffres}@tel.varo.app`;
+      email = `${chiffres}@vendeur.varo.invalid`;
     }
 
     // 3. Création du compte avec la clé de service (serveur uniquement)
@@ -49,6 +49,7 @@ export const creerVendeur = createServerFn({ method: "POST" })
     });
     if (error || !cree.user) {
       const msg = error?.message ?? "";
+      if (/weak|guess|pwned|leaked/i.test(msg)) throw new Error("Mot de passe trop facile à deviner. Choisis-en un autre.");
       if (/already|exists|registered/i.test(msg)) throw new Error("Ce téléphone ou cet email est déjà utilisé.");
       throw new Error("Impossible de créer le vendeur.");
     }
@@ -61,9 +62,13 @@ export const creerVendeur = createServerFn({ method: "POST" })
       actif: true,
       nom: data.nom,
       telephone: data.telephone || null,
+      doit_changer_mdp: true,
     });
     if (errRole) {
       await supabaseAdmin.auth.admin.deleteUser(cree.user.id);
+      const m = errRole.message ?? "";
+      if (m.includes("LIMITE_TOTALE")) throw new Error("Tu as atteint la limite de 30 vendeurs pour ta boutique.");
+      if (m.includes("LIMITE_JOUR")) throw new Error("Tu as créé 10 vendeurs aujourd'hui. Réessaie demain.");
       throw new Error("Impossible de créer le vendeur.");
     }
     return { id: cree.user.id, identifiant: data.email || data.telephone };
@@ -87,6 +92,44 @@ export const reinitialiserMotDePasseVendeur = createServerFn({ method: "POST" })
     if (!v) throw new Error("Vendeur introuvable dans ta boutique.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.vendeurId, { password: data.motDePasse });
-    if (error) throw new Error("Impossible de changer le mot de passe.");
+    if (error) {
+      if (/weak|guess|pwned|leaked/i.test(error.message)) throw new Error("Mot de passe trop facile à deviner. Choisis-en un autre.");
+      throw new Error("Impossible de changer le mot de passe.");
+    }
+    // Nouveau mot de passe provisoire : le vendeur devra le changer à sa prochaine connexion
+    await supabaseAdmin.from("roles_utilisateurs").update({ doit_changer_mdp: true }).eq("user_id", data.vendeurId);
+    return { ok: true };
+  });
+
+/**
+ * Lève l'obligation de changer le mot de passe provisoire.
+ * Le navigateur change d'abord le mot de passe (sa session reste ouverte) ;
+ * le serveur vérifie ensuite que le nouveau mot de passe fonctionne vraiment
+ * et qu'il diffère du provisoire, avant de lever le drapeau.
+ */
+export const confirmerChangementMotDePasse = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ motDePasse: z.string().min(8).max(72) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: u } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+    const email = u.user?.email;
+    if (!email) throw new Error("Compte introuvable.");
+    const { createClient } = await import("@supabase/supabase-js");
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
+    const pub = createClient(process.env["SUPABASE_URL"]!, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: (input, init) => {
+        const h = new Headers(init?.headers);
+        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization");
+        h.set("apikey", key);
+        return fetch(input, { ...init, headers: h });
+      } },
+    });
+    const { data: s, error } = await pub.auth.signInWithPassword({ email, password: data.motDePasse });
+    if (error || !s.session) throw new Error("Le nouveau mot de passe n'a pas été enregistré. Réessaie.");
+    // On ferme la session de vérification uniquement (pas celle du navigateur)
+    await pub.auth.signOut({ scope: "local" });
+    await supabaseAdmin.from("roles_utilisateurs").update({ doit_changer_mdp: false }).eq("user_id", context.userId);
     return { ok: true };
   });
