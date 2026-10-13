@@ -10,6 +10,7 @@ export type Moi = {
   role: Role | null;
   actif: boolean;
   nom: string | null;
+  doitChangerMdp: boolean;
   boutique: { id: string; nom: string } | null;
   abonnement: { statut: string; date_fin: string } | null;
   abonnementActif: boolean;
@@ -24,7 +25,7 @@ export function useMoi() {
       if (!u.user) throw new Error("Non connecté");
       const { data: r } = await supabase
         .from("roles_utilisateurs")
-        .select("role, actif, nom, boutique_id")
+        .select("role, actif, nom, boutique_id, doit_changer_mdp")
         .eq("user_id", u.user.id)
         .maybeSingle();
       let boutique = null;
@@ -46,6 +47,7 @@ export function useMoi() {
         role: (r?.role as Role) ?? null,
         actif: r?.actif ?? false,
         nom: r?.nom ?? null,
+        doitChangerMdp: r?.doit_changer_mdp ?? false,
         boutique,
         abonnement,
         abonnementActif,

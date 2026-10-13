@@ -36,7 +36,7 @@ export const creerVendeur = createServerFn({ method: "POST" })
       if (!z.string().email().safeParse(email).success) throw new Error("Email invalide.");
     } else {
       if (chiffres.length < 9) throw new Error("Donne un téléphone ou un email.");
-      email = `${chiffres}@tel.varo.app`;
+      email = `${chiffres}@vendeur.varo.invalid`;
     }
 
     // 3. Création du compte avec la clé de service (serveur uniquement)
@@ -49,6 +49,7 @@ export const creerVendeur = createServerFn({ method: "POST" })
     });
     if (error || !cree.user) {
       const msg = error?.message ?? "";
+      if (/weak|guess|pwned|leaked/i.test(msg)) throw new Error("Mot de passe trop facile à deviner. Choisis-en un autre.");
       if (/already|exists|registered/i.test(msg)) throw new Error("Ce téléphone ou cet email est déjà utilisé.");
       throw new Error("Impossible de créer le vendeur.");
     }
@@ -61,9 +62,13 @@ export const creerVendeur = createServerFn({ method: "POST" })
       actif: true,
       nom: data.nom,
       telephone: data.telephone || null,
+      doit_changer_mdp: true,
     });
     if (errRole) {
       await supabaseAdmin.auth.admin.deleteUser(cree.user.id);
+      const m = errRole.message ?? "";
+      if (m.includes("LIMITE_TOTALE")) throw new Error("Tu as atteint la limite de 30 vendeurs pour ta boutique.");
+      if (m.includes("LIMITE_JOUR")) throw new Error("Tu as créé 10 vendeurs aujourd'hui. Réessaie demain.");
       throw new Error("Impossible de créer le vendeur.");
     }
     return { id: cree.user.id, identifiant: data.email || data.telephone };
@@ -87,6 +92,28 @@ export const reinitialiserMotDePasseVendeur = createServerFn({ method: "POST" })
     if (!v) throw new Error("Vendeur introuvable dans ta boutique.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.vendeurId, { password: data.motDePasse });
-    if (error) throw new Error("Impossible de changer le mot de passe.");
+    if (error) {
+      if (/weak|guess|pwned|leaked/i.test(error.message)) throw new Error("Mot de passe trop facile à deviner. Choisis-en un autre.");
+      throw new Error("Impossible de changer le mot de passe.");
+    }
+    // Nouveau mot de passe provisoire : le vendeur devra le changer à sa prochaine connexion
+    await supabaseAdmin.from("roles_utilisateurs").update({ doit_changer_mdp: true }).eq("user_id", data.vendeurId);
+    return { ok: true };
+  });
+
+/** Changement du mot de passe provisoire par l'utilisateur lui-même (première connexion). */
+export const changerMonMotDePasse = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ motDePasse: z.string().min(8, "8 caractères minimum.").max(72) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(context.userId, { password: data.motDePasse });
+    if (error) {
+      if (/weak|guess|pwned|leaked/i.test(error.message)) throw new Error("Mot de passe trop facile à deviner. Choisis-en un autre.");
+      if (/same|different/i.test(error.message)) throw new Error("Choisis un mot de passe différent du provisoire.");
+      throw new Error("Impossible de changer le mot de passe.");
+    }
+    // Le drapeau n'est levé qu'après un vrai changement de mot de passe, côté serveur
+    await supabaseAdmin.from("roles_utilisateurs").update({ doit_changer_mdp: false }).eq("user_id", context.userId);
     return { ok: true };
   });
