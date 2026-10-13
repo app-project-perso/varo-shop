@@ -115,5 +115,19 @@ export const changerMonMotDePasse = createServerFn({ method: "POST" })
     }
     // Le drapeau n'est levé qu'après un vrai changement de mot de passe, côté serveur
     await supabaseAdmin.from("roles_utilisateurs").update({ doit_changer_mdp: false }).eq("user_id", context.userId);
-    return { ok: true };
+    // Changer le mot de passe ferme les sessions : on rouvre une session avec le nouveau mot de passe
+    const { data: u } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+    const { createClient } = await import("@supabase/supabase-js");
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
+    const pub = createClient(process.env["SUPABASE_URL"]!, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: (input, init) => {
+        const h = new Headers(init?.headers);
+        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization");
+        h.set("apikey", key);
+        return fetch(input, { ...init, headers: h });
+      } },
+    });
+    const { data: s } = await pub.auth.signInWithPassword({ email: u.user!.email!, password: data.motDePasse });
+    return { access_token: s.session?.access_token ?? null, refresh_token: s.session?.refresh_token ?? null };
   });

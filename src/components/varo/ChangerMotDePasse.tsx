@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { KeyRound } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { changerMonMotDePasse } from "@/lib/vendeurs.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,10 @@ export function ChangerMotDePasse() {
     if (mdp !== confirm) return setErreur("Les deux mots de passe ne sont pas identiques.");
     setEnCours(true);
     try {
-      await changer({ data: { motDePasse: mdp } });
+      const r = await changer({ data: { motDePasse: mdp } });
+      if (r.access_token && r.refresh_token) {
+        await supabase.auth.setSession({ access_token: r.access_token, refresh_token: r.refresh_token });
+      }
       toast.success("Mot de passe changé");
       await qc.invalidateQueries({ queryKey: ["moi"] });
     } catch (err) {
